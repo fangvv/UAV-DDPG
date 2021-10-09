@@ -20,7 +20,7 @@ TensorFlow 1.X
   		number={4},
   		pages={2991--3006},
   		year={2021},
-  		publisher={Springer}`
+  		publisher={Springer}
 	}
 
 ## Contact
