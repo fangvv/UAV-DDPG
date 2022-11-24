@@ -25,6 +25,6 @@ TensorFlow 1.X
 
 ## Contact
 
-Yunpeng Wang (18120421@bjtu.edu.cn)
+Yunpeng Wang (1609791621@qq.com)
 
 Weiwei Fang (fangvv@qq.com)
