@@ -16,16 +16,17 @@ import matplotlib.pyplot as plt
 # np.random.seed(2)
 # tf.set_random_seed(2)  # reproducible
 
+tf.compat.v1.disable_eager_execution()
 
 class Actor(object):
     def __init__(self, sess, a_dim, n_features, action_bound, lr=0.001):
         self.sess = sess
-        self.s = tf.placeholder(tf.float32, [1, n_features], "state")
+        self.s = tf.compat.v1.placeholder(tf.float32, [1, n_features], "state")
         # self.a = tf.placeholder(tf.float32, None, name="act")
-        self.a = tf.placeholder(tf.float32, shape=[1, a_dim], name="act")
-        self.td_error = tf.placeholder(tf.float32, None, name="td_error")  # TD_error
+        self.a = tf.compat.v1.placeholder(tf.float32, shape=[1, a_dim], name="act")
+        self.td_error = tf.compat.v1.placeholder(tf.float32, None, name="td_error")  # TD_error
 
-        l1 = tf.layers.dense(
+        l1 = tf.keras.layers.Dense(
             inputs=self.s,
             units=400,  # number of hidden units
             activation=tf.nn.relu6,
@@ -33,7 +34,7 @@ class Actor(object):
             bias_initializer=tf.constant_initializer(0.1),  # biases
             name='l1'
         )
-        # l2 = tf.layers.dense(
+        # l2 = tf.keras.layers.Dense(
         #     inputs=l1,
         #     units=300,  # number of hidden units
         #     activation=tf.nn.relu6,
@@ -41,7 +42,7 @@ class Actor(object):
         #     bias_initializer=tf.constant_initializer(0.1),  # biases
         #     name='l2'
         # )
-        l3 = tf.layers.dense(
+        l3 = tf.keras.layers.Dense(
             inputs=l1,
             units=10,  # number of hidden units
             activation=tf.nn.relu,
@@ -50,7 +51,7 @@ class Actor(object):
             name='l3'
         )
 
-        mu = tf.layers.dense(
+        mu = tf.keras.layers.Dense(
             inputs=l3,
             # units=1,  # number of hidden units
             units=a_dim,  # number of hidden units
@@ -60,7 +61,7 @@ class Actor(object):
             name='mu'
         )
 
-        sigma = tf.layers.dense(
+        sigma = tf.keras.layers.Dense(
             inputs=l3,
             units=a_dim,  # output units
             activation=tf.nn.softplus,  # get action probabilities
@@ -106,12 +107,12 @@ class Critic(object):
     def __init__(self, sess, n_features, lr=0.01):
         self.sess = sess
         with tf.name_scope('inputs'):
-            self.s = tf.placeholder(tf.float32, [1, n_features], "state")
-            self.v_ = tf.placeholder(tf.float32, [1, 1], name="v_next")
-            self.r = tf.placeholder(tf.float32, name='r')
+            self.s = tf.compat.v1.placeholder(tf.float32, [1, n_features], "state")
+            self.v_ = tf.compat.v1.placeholder(tf.float32, [1, 1], name="v_next")
+            self.r = tf.compat.v1.placeholder(tf.float32, name='r')
 
         with tf.variable_scope('Critic'):
-            l1 = tf.layers.dense(
+            l1 = tf.keras.layers.Dense(
                 inputs=self.s,
                 units=400,  # number of hidden units
                 activation=tf.nn.relu6,
@@ -119,7 +120,7 @@ class Critic(object):
                 bias_initializer=tf.constant_initializer(0.1),  # biases
                 name='l1'
             )
-            # l2 = tf.layers.dense(
+            # l2 = tf.keras.layers.Dense(
             #     inputs=l1,
             #     units=300,  # number of hidden units
             #     activation=tf.nn.relu6,
@@ -127,7 +128,7 @@ class Critic(object):
             #     # bias_initializer=tf.constant_initializer(0.1),  # biases
             #     name='l2'
             # )
-            l3 = tf.layers.dense(
+            l3 = tf.keras.layers.Dense(
                 inputs=l1,
                 units=10,  # number of hidden units
                 activation=tf.nn.relu,
@@ -136,7 +137,7 @@ class Critic(object):
                 name='l3'
             )
 
-            self.v = tf.layers.dense(
+            self.v = tf.keras.layers.Dense(
                 inputs=l3,
                 units=1,  # output units
                 activation=None,
@@ -173,7 +174,7 @@ N_S = env.state_dim
 A_BOUND = env.action_bound[1]
 a_dim = env.action_dim
 
-sess = tf.Session()
+sess = tf.compat.v1.Session()
 
 actor = Actor(sess, a_dim=a_dim, n_features=N_S, lr=LR_A, action_bound=[-A_BOUND, A_BOUND])
 critic = Critic(sess, n_features=N_S, lr=LR_C)
