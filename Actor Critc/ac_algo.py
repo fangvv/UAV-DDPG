@@ -10,6 +10,7 @@ import tensorflow as tf
 import numpy as np
 from UAV_env import UAVEnv
 from state_normalization import StateNormalization
+import tensorflow_probability as tfp
 import matplotlib.pyplot as plt
 
 
@@ -26,7 +27,7 @@ class Actor(object):
         self.a = tf.compat.v1.placeholder(tf.float32, shape=[1, a_dim], name="act")
         self.td_error = tf.compat.v1.placeholder(tf.float32, None, name="td_error")  # TD_error
 
-        l1 = tf.keras.layers.Dense(
+        l1 = tf.compat.v1.layers.dense(
             inputs=self.s,
             units=400,  # number of hidden units
             activation=tf.nn.relu6,
@@ -34,7 +35,7 @@ class Actor(object):
             bias_initializer=tf.constant_initializer(0.1),  # biases
             name='l1'
         )
-        # l2 = tf.keras.layers.Dense(
+        # l2 = tf.compat.v1.layers.dense(
         #     inputs=l1,
         #     units=300,  # number of hidden units
         #     activation=tf.nn.relu6,
@@ -42,7 +43,7 @@ class Actor(object):
         #     bias_initializer=tf.constant_initializer(0.1),  # biases
         #     name='l2'
         # )
-        l3 = tf.keras.layers.Dense(
+        l3 = tf.compat.v1.layers.dense(
             inputs=l1,
             units=10,  # number of hidden units
             activation=tf.nn.relu,
@@ -51,7 +52,7 @@ class Actor(object):
             name='l3'
         )
 
-        mu = tf.keras.layers.Dense(
+        mu = tf.compat.v1.layers.dense(
             inputs=l3,
             # units=1,  # number of hidden units
             units=a_dim,  # number of hidden units
@@ -61,7 +62,7 @@ class Actor(object):
             name='mu'
         )
 
-        sigma = tf.keras.layers.Dense(
+        sigma = tf.compat.v1.layers.dense(
             inputs=l3,
             units=a_dim,  # output units
             activation=tf.nn.softplus,  # get action probabilities
@@ -75,8 +76,8 @@ class Actor(object):
         ##squeeze 去掉值为1的维度[[0]] ----> 0
         # self.mu, self.sigma = tf.squeeze(mu * 2), tf.squeeze(sigma + 0.1)
         self.mu, self.sigma = tf.squeeze(mu), tf.squeeze(sigma + 0.1)
-        # tf.distributions.normal可以生成一个均值为loc，方差为scale的正态分布。
-        self.normal_dist = tf.distributions.Normal(self.mu, self.sigma)
+        # tfp.distributions.normal可以生成一个均值为loc，方差为scale的正态分布。
+        self.normal_dist = tfp.distributions.Normal(self.mu, self.sigma)
 
         ##tf.clip_by_value:输入一个张量A，把A中的每一个元素的值都压缩在min和max之间。小于min的让它等于min，大于max的元素的值等于max。
         # sample输出value值，在正态分布中概率的log值，作为loss值
@@ -112,7 +113,7 @@ class Critic(object):
             self.r = tf.compat.v1.placeholder(tf.float32, name='r')
 
         with tf.variable_scope('Critic'):
-            l1 = tf.keras.layers.Dense(
+            l1 = tf.compat.v1.layers.dense(
                 inputs=self.s,
                 units=400,  # number of hidden units
                 activation=tf.nn.relu6,
@@ -120,7 +121,7 @@ class Critic(object):
                 bias_initializer=tf.constant_initializer(0.1),  # biases
                 name='l1'
             )
-            # l2 = tf.keras.layers.Dense(
+            # l2 = tf.compat.v1.layers.dense(
             #     inputs=l1,
             #     units=300,  # number of hidden units
             #     activation=tf.nn.relu6,
@@ -128,7 +129,7 @@ class Critic(object):
             #     # bias_initializer=tf.constant_initializer(0.1),  # biases
             #     name='l2'
             # )
-            l3 = tf.keras.layers.Dense(
+            l3 = tf.compat.v1.layers.dense(
                 inputs=l1,
                 units=10,  # number of hidden units
                 activation=tf.nn.relu,
@@ -137,7 +138,7 @@ class Critic(object):
                 name='l3'
             )
 
-            self.v = tf.keras.layers.Dense(
+            self.v = tf.compat.v1.layers.dense(
                 inputs=l3,
                 units=1,  # output units
                 activation=None,
