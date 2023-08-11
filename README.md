@@ -8,7 +8,7 @@ This work will be published by Wireless Networks. Click [here](https://link.spri
 
 ## Required software
 
-TensorFlow 1.X
+TensorFlow 2.13.0
 
 ## Citation
 
