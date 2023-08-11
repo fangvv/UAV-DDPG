@@ -71,7 +71,7 @@ class DDPG(object):
 
         self.a_dim, self.s_dim, self.a_bound = a_dim, s_dim, a_bound,
         self.S = tf.placeholder(tf.float32, [None, s_dim], 's')  # 输入
-        self.S_ = tf.placeholder(tf.float32, [None, s_dim], 's_')
+        self.S_ = tf.placeholder(tf.float32, [None, s_dim], 'next_state')
         self.R = tf.placeholder(tf.float32, [None, 1], 'r')
 
         with tf.variable_scope('Actor'):
@@ -114,17 +114,17 @@ class DDPG(object):
 
         indices = np.random.choice(MEMORY_CAPACITY, size=BATCH_SIZE)
         bt = self.memory[indices, :]
-        bs = bt[:, :self.s_dim]
-        ba = bt[:, self.s_dim: self.s_dim + self.a_dim]
-        br = bt[:, -self.s_dim - 1: -self.s_dim]
+        bs = bt[:, :self.s_dim] # state
+        ba = bt[:, self.s_dim: self.s_dim + self.a_dim] # action
+        br = bt[:, -self.s_dim - 1: -self.s_dim] # reward
         bs_ = bt[:, -self.s_dim:]
 
         self.sess.run(self.atrain, {self.S: bs})
         self.sess.run(self.ctrain, {self.S: bs, self.a: ba, self.R: br, self.S_: bs_})
 
-    def store_transition(self, s, a, r, s_):
-        transition = np.hstack((s, a, [r], s_))
-        # transition = np.hstack((s, [a], [r], s_))
+    def store_transition(self, s, a, r, next_state):
+        transition = np.hstack((s, a, [r], next_state))
+        # transition = np.hstack((s, [a], [r], next_state))
         index = self.pointer % MEMORY_CAPACITY  # replace the old memory with new memory
         self.memory[index, :] = transition
         self.pointer += 1
@@ -176,19 +176,19 @@ for i in range(MAX_EPISODES):
         # Add exploration noise
         a = ddpg.choose_action(s_normal.state_normal(s))
         a = np.clip(np.random.normal(a, var), *a_bound)  # 高斯噪声add randomness to action selection for exploration
-        s_, r, is_terminal, step_redo, offloading_ratio_change, reset_dist = env.step(a)
+        next_state, r, is_terminal, step_redo, offloading_ratio_change, reset_dist = env.step(a)
         if step_redo:
             continue
         if reset_dist:
             a[2] = -1
         if offloading_ratio_change:
             a[3] = -1
-        ddpg.store_transition(s_normal.state_normal(s), a, r, s_normal.state_normal(s_))  # 训练奖励缩小10倍
+        ddpg.store_transition(s_normal.state_normal(s), a, r, s_normal.state_normal(next_state))  # 训练奖励缩小10倍
 
         if ddpg.pointer > MEMORY_CAPACITY:
             # var = max([var * 0.9997, VAR_MIN])  # decay the action randomness
             ddpg.learn()
-        s = s_
+        s = next_state
         ep_reward += r
         if j == MAX_EP_STEPS - 1 or is_terminal:
             print('Episode:', i, ' Steps: %2d' % j, ' Reward: %7.2f' % ep_reward, 'Explore: %.3f' % var)
