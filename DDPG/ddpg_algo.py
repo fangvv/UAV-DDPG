@@ -11,12 +11,15 @@ tensorflow 1.14.0
 gym 0.15.3
 """
 
-import tensorflow as tf
+import tensorflow
+import tensorflow.compat.v1 as tf
 import numpy as np
 from UAV_env import UAVEnv
 import time
 import matplotlib.pyplot as plt
 from state_normalization import StateNormalization
+
+tf.disable_eager_execution()
 
 #####################  hyper parameters  ####################
 MAX_EPISODES = 1000
