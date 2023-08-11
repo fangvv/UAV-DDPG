@@ -91,7 +91,7 @@ class Actor(object):
             self.exp_v += 0.01 * self.normal_dist.entropy()
 
         with tf.name_scope('train'):
-            self.train_op = tf.train.AdamOptimizer(lr).minimize(-self.exp_v, global_step)  # min(v) = max(-v)
+            self.train_op = tf.compat.v1.train.AdamOptimizer(lr).minimize(-self.exp_v, global_step)  # min(v) = max(-v)
 
     def learn(self, s, a, td):
         s = s[np.newaxis, :]
@@ -112,7 +112,7 @@ class Critic(object):
             self.v_ = tf.compat.v1.placeholder(tf.float32, [1, 1], name="v_next")
             self.r = tf.compat.v1.placeholder(tf.float32, name='r')
 
-        with tf.variable_scope('Critic'):
+        with tf.compat.v1.variable_scope('Critic'):
             l1 = tf.compat.v1.layers.dense(
                 inputs=self.s,
                 units=400,  # number of hidden units
@@ -147,11 +147,11 @@ class Critic(object):
                 name='V'
             )
 
-        with tf.variable_scope('squared_TD_error'):
+        with tf.compat.v1.variable_scope('squared_TD_error'):
             self.td_error = tf.reduce_mean(self.r + GAMMA * self.v_ - self.v)
             self.loss = tf.square(self.td_error)  # TD_error = (r+gamma*V_next) - V_eval
-        with tf.variable_scope('train'):
-            self.train_op = tf.train.AdamOptimizer(lr).minimize(self.loss)
+        with tf.compat.v1.variable_scope('train'):
+            self.train_op = tf.compat.v1.train.AdamOptimizer(lr).minimize(self.loss)
 
     def learn(self, s, r, s_):
         s, s_ = s[np.newaxis, :], s_[np.newaxis, :]
@@ -180,7 +180,7 @@ sess = tf.compat.v1.Session()
 actor = Actor(sess, a_dim=a_dim, n_features=N_S, lr=LR_A, action_bound=[-A_BOUND, A_BOUND])
 critic = Critic(sess, n_features=N_S, lr=LR_C)
 
-sess.run(tf.global_variables_initializer())
+sess.run(tf.compat.v1.global_variables_initializer())
 
 if OUTPUT_GRAPH:
     tf.summary.FileWriter("logs/", sess.graph)
