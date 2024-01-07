@@ -23,12 +23,13 @@ TensorFlow 1.X
   		publisher={Springer}
 	}
 	
-## Stars
-
-
 ## Stargazers over time
 
 [![Stargazers over time](https://starchart.cc/fangvv/UAV-DDPG.svg)](https://starchart.cc/fangvv/UAV-DDPG)
+
+## For more
+
+We have another work on [MADDPG](https://github.com/fangvv/VN-MADDPG) for your reference, and you can simply use Ray for implementing [DRL algorithms](https://github.com/ray-project/ray/tree/master/rllib/algorithms) now.
 
 ## Contact
 
