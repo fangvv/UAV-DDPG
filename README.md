@@ -10,7 +10,150 @@ This work will be published by Wireless Networks. Click [here](https://link.spri
 
 ## Required software
 
-TensorFlow 1.X
+- TensorFlow 1.X
+- NumPy
+- Matplotlib
+
+## Project Structure
+
+```
+UAV-DDPG/
+├── DDPG/                              # DDPG algorithm (main algorithm)
+│   ├── UAV_env.py                    # Environment simulator: UAV, UE, channel model, energy model
+│   ├── ddpg_algo.py                  # DDPG agent: Actor-Critic networks, experience replay, training loop
+│   ├── state_normalization.py        # State normalization: scale state values to [0, 1]
+│   ├── DDPG_without_behavior_noise/  # Ablation: DDPG without exploration noise
+│   └── DDPG_without_state_normalization/  # Ablation: DDPG without state normalization
+├── DQN/                               # DQN baseline algorithm
+│   ├── UAV_env.py                    # Environment with discrete action space (for DQN)
+│   ├── dqn_algo.py                   # DQN algorithm implementation
+│   └── state_normalization.py
+├── Actor Critc/                       # Actor-Critic baseline algorithm
+│   ├── UAV_env.py
+│   ├── ac_algo.py                    # Actor-Critic with continuous action space
+│   └── state_normalization.py
+├── Edge_only/                         # Edge-only baseline (offload all tasks to UAV)
+├── Local_only/                        # Local-only baseline (no offloading)
+└── README.md
+```
+
+## Core Modules
+
+### UAVEnv (`UAV_env.py`)
+
+The environment class that models the UAV-assisted MEC system. Key attributes:
+
+| Attribute | Description |
+|-----------|-------------|
+| `height = ground_length = ground_width = 100` | 3D area: 100m × 100m × 100m |
+| `B = 1 MHz` | Channel bandwidth |
+| `flight_speed = 50 m/s` | UAV flight speed |
+| `f_ue` / `f_uav` | CPU frequency of UE / UAV |
+| `M = 4` | Number of user equipments |
+| `slot_num = T / (t_fly + t_com)` | 40 time slots per episode |
+
+**State space** (`state_dim = 4 + M × 4`):
+
+| Index | Feature | Dimension |
+|-------|---------|-----------|
+| 0 | UAV battery remaining | 1 |
+| 1–2 | UAV location (x, y) | 2 |
+| 3 | Remaining total task size | 1 |
+| 4–(3+M×2) | UE locations (x, y) for each UE | M × 2 |
+| (4+M×2)–(3+M×3) | Task size of each UE | M |
+| (4+M×3)–(3+M×4) | Block flag (LOS/NLOS) of each UE | M |
+
+**Action space** (`action_dim = 4`): continuous values in `[-1, 1]` mapped to `[0, 1]` for:
+
+| Index | Meaning | Range |
+|-------|---------|-------|
+| 0 | Target UE index | `[0, M-1]` |
+| 1 | Flight angle θ | `[0, 2π]` |
+| 2 | Flight distance | `[0, flight_speed × t_fly]` |
+| 3 | Task offloading ratio | `[0, 1]` |
+
+**Key methods:**
+
+- `reset()` — Reset the environment to the initial state and return the observation.
+- `step(action)` — Execute one MDP step: decode the action, compute flight energy, update UAV position, calculate delay via `com_delay()`, update battery/task/UE states, and return `(next_state, reward, terminal, step_redo, ...)`.
+- `com_delay(loc_ue, loc_uav, offloading_ratio, task_size, block_flag)` — Compute the maximum processing delay as `max(transmission + edge computation, local computation)`. The channel gain follows free-space path loss with LOS/NLOS noise levels.
+
+**Reward:** `-delay`, i.e., the negative of the maximum processing delay. The algorithm minimizes the maximum delay across all UEs.
+
+### DDPG (`ddpg_algo.py`)
+
+The DDPG agent with experience replay and soft target updates.
+
+**Network architecture:**
+
+| Network | Layers | Output Activation |
+|---------|--------|-------------------|
+| Actor | 400 → 300 → 10 → 4 | tanh, scaled by `action_bound` |
+| Critic | state(400) + action(400) → 300 → 10 → 1 | linear (Q-value) |
+
+**Key hyperparameters:**
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| `LR_A = 0.001` | Learning rate for Actor |
+| `LR_C = 0.002` | Learning rate for Critic |
+| `GAMMA = 0.001` | Discount factor |
+| `TAU = 0.01` | Soft target update rate |
+| `MEMORY_CAPACITY = 10000` | Experience replay buffer size |
+| `BATCH_SIZE = 64` | Training batch size |
+
+**Key methods:**
+
+- `choose_action(s)` — Forward pass through the Actor network to select a deterministic action.
+- `store_transition(s, a, r, s_)` — Store a transition tuple in the replay buffer.
+- `learn()` — Soft-update target networks, then sample a batch and train both Actor (maximize Q) and Critic (minimize TD error).
+- `_build_a(s, scope, trainable)` — Build the Actor network: `state → 400(relu6) → 300(relu6) → 10(relu) → action(tanh)`.
+- `_build_c(s, a, scope, trainable)` — Build the Critic network: `state` and `action` are separately embedded into 400 units, summed with bias, then `→ 300(relu6) → 10(relu) → Q-value`.
+
+**Training loop:** For each episode, reset the environment, then for each step add Gaussian exploration noise `N(0, var)` to the action, execute `step()`, store the transition, and call `learn()` once the replay buffer has enough samples.
+
+### StateNormalization (`state_normalization.py`)
+
+Normalizes the raw state vector to `[0, 1]` by dividing each component by its maximum possible value. This accelerates training convergence and stabilizes the neural network.
+
+| State component | Max value |
+|-----------------|-----------|
+| UAV battery | 500000 J |
+| UAV location | 100 m |
+| Remaining task size | 100 × 1048576 bits |
+| UE location | 100 m |
+| UE task size | ~2.5 Mbits |
+| Block flag | 1 |
+
+### DQN Baseline (`dqn_algo.py`)
+
+The DQN baseline discretizes the continuous action space into `M × 11³` discrete actions for comparison. It uses a dual-network architecture (eval/target) with hard replacement every 200 steps.
+
+### Ablation Studies
+
+Two variants under `DDPG/` verify the contribution of key components:
+
+- **DDPG_without_behavior_noise** — Removes the Gaussian exploration noise during training.
+- **DDPG_without_state_normalization** — Feeds raw (unnormalized) states to the networks.
+
+## Usage
+
+```bash
+# Install dependencies (TensorFlow 1.x required)
+pip install tensorflow==1.14.0 numpy matplotlib
+
+# Run DDPG (main algorithm)
+cd DDPG
+python ddpg_algo.py
+
+# Run DQN baseline
+cd DQN
+python dqn_algo.py
+
+# Run Actor-Critic baseline
+cd "Actor Critc"
+python ac_algo.py
+```
 
 ## Citation
 
