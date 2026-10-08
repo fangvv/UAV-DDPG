@@ -157,6 +157,10 @@ cd "Actor Critc"
 python ac_algo.py
 ```
 
+## ⭐ Star
+
+**If you find this work useful for your research, please consider giving this repository a ⭐ star. Your support is greatly appreciated!**
+
 ## Citation
 
 If you find UAV-DDPG useful or relevant to your project and research, please kindly cite our paper:
